@@ -1,0 +1,40 @@
+{
+  "name": "legalizationcenter",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test_phase1.js && node test_phase4.js",
+    "preflight": "node src/cli/preflight.js",
+    "leads:report": "node src/cli/leads.js report",
+    "leads:export": "node src/cli/leads.js export",
+    "leads:handoff": "node src/cli/leads.js handoff",
+    "sources:report": "node src/cli/sources.js report",
+    "sources:link": "node src/cli/sources.js link",
+    "vacancies:scrape": "node src/scrapers/site_vacancy_scraper.js",
+    "groups:find": "node src/marketing/fb_group_finder.js",
+    "campaign:dry": "node src/marketing/vacancy_campaign.js",
+    "campaign:safe": "node src/marketing/vacancy_campaign.js --safe",
+    "campaign:safe:live": "node src/marketing/vacancy_campaign.js --safe --live --headed",
+    "campaign:scrape": "node src/marketing/vacancy_campaign.js --scrape-telegram",
+    "campaign:live": "node src/marketing/vacancy_campaign.js --live",
+    "campaign:live:headed": "node src/marketing/vacancy_campaign.js --live --headed"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "apify-client": "^2.23.3",
+    "dotenv": "^17.4.2",
+    "input": "^1.0.1",
+    "libsql": "^0.5.29",
+    "node-telegram-bot-api": "^0.67.0",
+    "puppeteer": "^24.43.1",
+    "telegram": "^2.26.22"
+  }
+}

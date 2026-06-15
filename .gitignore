@@ -1,0 +1,24 @@
+# Secrets — NEVER commit
+.env
+.env.local
+facebook_cookies.json
+
+# Local database (data lives in Turso in production)
+database.db
+database.db-*
+*.sqlite
+*.sqlite3
+
+# Dependencies
+node_modules/
+
+# Local replica file created by libsql on the host
+local-replica.db*
+
+# Exports / generated artifacts
+exports/*
+!exports/.gitkeep
+
+# OS / editor
+.DS_Store
+*.log

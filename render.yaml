@@ -1,0 +1,53 @@
+# Render Blueprint — deploys the always-on Telegram bot as a free web service.
+# The bot uses Telegram long-polling, so no inbound webhook is needed; the HTTP
+# server in index.js exists only to satisfy Render's port bind + health check
+# and to give an external keep-alive pinger something to hit.
+#
+# IMPORTANT: a Render FREE web service still spins down after ~15 min with no
+# inbound traffic. Set up an external pinger (cron-job.org / UptimeRobot) to GET
+# https://<your-service>.onrender.com/health every 10 minutes. See
+# docs/DEPLOY_RENDER.md.
+services:
+  - type: web
+    name: gatewayasia-bot
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm install
+    startCommand: node index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Facebook posting runs locally, not on the host — skip the heavy Chromium download.
+      - key: PUPPETEER_SKIP_DOWNLOAD
+        value: "true"
+      - key: DAILY_REPORT_HOUR
+        value: "21"
+      # Secrets — set these in the Render dashboard (Environment tab). sync:false
+      # means Render will NOT read them from this file; you enter them manually.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_BOT_USERNAME
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # Comma-separated Gemini keys for round-robin quota rotation (set in dashboard).
+      - key: GEMINI_API_KEYS
+        sync: false
+      - key: ADMIN_TELEGRAM_ID
+        sync: false
+      - key: ADMIN_ALERT_CHAT_ID
+        sync: false
+      - key: DAILY_REPORT_CHAT_ID
+        sync: false
+      - key: DIALOG_MONITOR_CHAT_ID
+        sync: false
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+      - key: APIFY_TOKEN
+        sync: false
