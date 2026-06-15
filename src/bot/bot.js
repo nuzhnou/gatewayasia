@@ -133,7 +133,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   // Очищаем историю чата перед началом нового диалога
   db.prepare("DELETE FROM chat_history WHERE chat_id = ?").run(chatId);
 
-  const welcomeMessage = "👋 Привет! Я Мия, ИИ-помощник Gateway Asia.\nПомогаю с честными вакансиями в Азии (Вьетнам, Таиланд, Китай) — преподавание английского, хостес, модели/промо, отели и индустрия гостеприимства. Без обмана и без оплаты вакансий.\nКак тебя зовут? 👇\n\n👋 Hi! I'm Mia, the Gateway Asia AI assistant.\nI help with legit jobs across Asia (Vietnam, Thailand, China) — English teaching, hostess, model/promo, hotel & hospitality roles. No scams, no fees for jobs.\nWhat's your name? 👇";
+  const welcomeMessage = "👋 Привет! Я Мия, ИИ-помощник Gateway Asia.\nПомогаю с честными вакансиями в Азии (Вьетнам, Таиланд, Китай) — преподавание английского, хостес, модели/промо, отели и индустрия гостеприимства. Без обмана и без оплаты вакансий.\n\nКак тебя зовут? 👇\n\n🇬🇧 You can write in English too.";
   
   // Сохраняем приветствие бота в историю
   db.prepare("INSERT INTO chat_history (chat_id, role, message) VALUES (?, ?, ?)")

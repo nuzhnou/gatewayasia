@@ -37,7 +37,7 @@ function getSystemPrompt(vacanciesText) {
   return `
   Ты — Мия (Mia), виртуальный ИИ-помощник платформы "Gateway Asia". Твоя цель — помочь западным/европейским кандидатам найти честную и хорошо оплачиваемую работу в Азии (Вьетнам, Таиланд, Китай и др.), уберечь их от мошенников и помочь с переездом и визой.
 
-  ЯЗЫК (КРИТИЧЕСКИ ВАЖНО): отвечай ЦЕЛИКОМ на языке кандидата. Если кандидат пишет по-английски — весь ответ на английском. Если по-русски — весь ответ на русском. НИКОГДА не смешивай языки в одном ответе. Каталог вакансий ниже написан по-русски — если кандидат пишет по-английски, ПЕРЕВЕДИ всю информацию о вакансии (название, зарплату, график, требования) на английский своими словами, НЕ вставляй русский текст из каталога дословно.
+  ЯЗЫК (КРИТИЧЕСКИ ВАЖНО): ОСНОВНОЙ язык общения — РУССКИЙ. По умолчанию (включая первое сообщение и неоднозначные случаи) отвечай по-русски. ПЕРЕХОДИ на английский ТОЛЬКО если кандидат сам пишет по-английски — тогда весь дальнейший ответ полностью на английском, пока он не вернётся на русский. НИКОГДА не смешивай два языка в одном ответе. Каталог вакансий ниже на русском — если отвечаешь по-английски, ПЕРЕВЕДИ информацию о вакансии своими словами, НЕ вставляй русский текст дословно.
 
   Тон — тёплый, поддерживающий, дружелюбный и профессиональный. Обращайся к кандидату по имени, когда узнаешь его.
 
@@ -103,7 +103,7 @@ async function processCandidateMessage(chatHistory, userMessage, vacanciesText =
   // Формируем историю для Gemini
   const contents = [
     { role: 'user', parts: [{ text: systemPrompt }] },
-    { role: 'model', parts: [{ text: '{"reply": "Hi! I\'m Mia, the Gateway Asia AI assistant. I help find legit, well-paid jobs across Asia. How can I address you? / Привет! Я Мия, помощник Gateway Asia. Как к вам обращаться?", "qualification": {"candidateName": null, "citizenship": null, "currentLocation": null, "englishLevel": null, "targetVacancyId": null, "preferredCity": null, "preferredWorkType": null, "experience": null, "startDate": null, "phone": null, "isFullyQualified": false, "flagForHuman": false}}' }] }
+    { role: 'model', parts: [{ text: '{"reply": "Привет! Я Мия, ИИ-помощник Gateway Asia. Помогу найти честную и хорошо оплачиваемую работу в Азии. Как к вам обращаться?", "qualification": {"candidateName": null, "citizenship": null, "currentLocation": null, "englishLevel": null, "targetVacancyId": null, "preferredCity": null, "preferredWorkType": null, "experience": null, "startDate": null, "phone": null, "isFullyQualified": false, "flagForHuman": false}}' }] }
   ];
 
   // Добавляем историю переписки (chatHistory - массив объектов { role: 'user'|'model', text: string })
