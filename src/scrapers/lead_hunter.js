@@ -4,10 +4,15 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { db, initDatabase } = require('../database/db');
 const config = require('../../config.json');
 
-// Проверка наличия обязательных ключей
-if (!process.env.APIFY_TOKEN || !process.env.GEMINI_API_KEY) {
-  console.error("CRITICAL ERROR: APIFY_TOKEN and GEMINI_API_KEY must be set in .env file.");
+// GEMINI_API_KEY обязателен. APIFY_TOKEN опционален: без него скрейпинг лидов
+// просто выключен (режим "ручной каталог"), но бот и остальное работают.
+if (!process.env.GEMINI_API_KEY) {
+  console.error("CRITICAL ERROR: GEMINI_API_KEY must be set in .env file.");
   process.exit(1);
+}
+const APIFY_ENABLED = Boolean(process.env.APIFY_TOKEN);
+if (!APIFY_ENABLED) {
+  console.warn("[LEAD HUNTER] APIFY_TOKEN не задан — скрейпинг лидов выключен (режим ручного каталога).");
 }
 
 // Инициализация клиентов
@@ -102,6 +107,10 @@ async function scrapeTelegram(channels) {
 
 // Главная функция сбора и обработки лидов
 async function runLeadHunter(sources) {
+  if (!APIFY_ENABLED) {
+    console.log("[LEAD HUNTER] Пропуск: APIFY_TOKEN не задан (скрейпинг отключён).");
+    return;
+  }
   const fbGroups = sources.facebookGroups || [];
   const tgChannels = sources.telegramChannels || [];
   

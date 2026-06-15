@@ -12,18 +12,12 @@
     "passive_payout_per_hour": 1
   },
   "sources": {
-    "facebookGroups": [
-      "https://www.facebook.com/groups/rabotapolscha",
-      "https://www.facebook.com/groups/praca.polska.ukraina"
-    ],
-    "telegramChannels": [
-      "rabotapoland24",
-      "work_in_poland_jobs"
-    ]
+    "facebookGroups": [],
+    "telegramChannels": []
   },
   "telegramVacancySource": {
-    "channel_id": "-1001620252294",
-    "invite_link": "https://t.me/+ETDNHsW1Xek4ODRk",
+    "channel_id": "",
+    "invite_link": "",
     "message_limit": 50
   },
   "facebookPosting": {
