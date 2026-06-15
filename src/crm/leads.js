@@ -301,13 +301,12 @@ function buildLeadAdminCard(lead, qualification = null) {
   const q = qualification || {};
   const name = q.candidateName || lead.candidate_name || 'Не указано';
   const phone = q.phone || lead.phone || lead.contact_info || 'Не указан';
-  const documents = q.documents || lead.documents || 'Не указано';
   const citizenship = q.citizenship || lead.citizenship || 'Не указано';
+  const englishLevel = q.englishLevel || 'Не указано';
+  const experience = q.experience || 'Не указано';
   const currentLocation = q.currentLocation || lead.current_location || 'Не указано';
   const preferredCity = q.preferredCity || lead.preferred_city || 'Не указано';
   const workType = q.preferredWorkType || lead.preferred_work_type || 'Не указано';
-  const ageGroup = q.ageGroup || lead.age_group || 'Не указано';
-  const housing = q.housingNeeded || lead.housing_needed || 'Не указано';
   const startDate = q.startDate || lead.start_date || 'Не указано';
   const vacancy = q.targetVacancyId || lead.target_vacancy_id || 'Любая/уточнить';
   const source = lead.source_code || lead.source_platform || 'unknown';
@@ -321,11 +320,10 @@ function buildLeadAdminCard(lead, qualification = null) {
     `Phone: ${phone}`,
     `Current location: ${currentLocation}`,
     `Citizenship: ${citizenship}`,
-    `Documents: ${documents}`,
-    `Age: ${ageGroup}`,
-    `Preferred city: ${preferredCity}`,
-    `Work type: ${workType}`,
-    `Housing: ${housing}`,
+    `English: ${englishLevel}`,
+    `Experience: ${experience}`,
+    `Target country/city: ${preferredCity}`,
+    `Role: ${workType}`,
     `Ready: ${startDate}`,
     `Vacancy: ${vacancy}`,
     `Source: ${source}`,

@@ -6,8 +6,17 @@ const { runAutoPoster } = require('./src/marketing/auto_poster');
 const config = require('./config.json');
 
 console.log("====================================================");
-console.log("   POLAND RECRUITMENT ARBITRAGE AUTOMATION SYSTEM   ");
+console.log("        GATEWAY ASIA — RECRUITMENT AUTOMATION       ");
 console.log("====================================================");
+
+// Никогда не падаем от шальной ошибки: логируем и продолжаем работать.
+// Это держит процесс живым 24/7, чтобы Telegram-поллинг и самопинг не прерывались.
+process.on('unhandledRejection', (reason) => {
+  console.error('[RESILIENCE] Unhandled promise rejection:', reason && reason.message ? reason.message : reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[RESILIENCE] Uncaught exception (continuing):', err && err.message ? err.message : err);
+});
 
 // 1. Инициализация базы данных
 console.log("[SYSTEM] Initializing SQLite database...");
@@ -70,7 +79,7 @@ http.createServer((req, res) => {
     res.writeHead(degraded ? 503 : 200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       status: degraded ? 'degraded' : 'ok',
-      service: 'svoyak-bot',
+      service: 'gatewayasia-bot',
       time: new Date().toISOString(),
       bot
     }));
@@ -88,8 +97,14 @@ http.createServer((req, res) => {
 // minutes — that round-trips through Render's edge as inbound traffic and resets
 // the idle timer, keeping the bot awake 24/7. Render injects RENDER_EXTERNAL_URL
 // automatically; KEEPALIVE_URL can override it.
+const renderUrl = process.env.RENDER_EXTERNAL_URL
+  ? `${process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '')}/health`
+  : null;
+// Порядок: явный KEEPALIVE_URL → авто-URL от Render → жёсткий прод-фолбэк.
+// Последний гарантирует самопинг, даже если Render не проставит переменную.
 const keepAliveUrl = process.env.KEEPALIVE_URL
-  || (process.env.RENDER_EXTERNAL_URL ? `${process.env.RENDER_EXTERNAL_URL.replace(/\/$/, '')}/health` : null);
+  || renderUrl
+  || (process.env.NODE_ENV === 'production' ? 'https://gatewayasia-bot.onrender.com/health' : null);
 if (keepAliveUrl) {
   const KEEPALIVE_MS = Number(process.env.KEEPALIVE_INTERVAL_MS || 10 * 60 * 1000);
   setInterval(async () => {

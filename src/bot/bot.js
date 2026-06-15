@@ -133,7 +133,7 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   // Очищаем историю чата перед началом нового диалога
   db.prepare("DELETE FROM chat_history WHERE chat_id = ?").run(chatId);
 
-  const welcomeMessage = "Привет, земляк! 👋 Я — Леся, твой ИИ-помощник от сообщества Svoyak.pl.\n\nПомогу тебе найти нормальную и честную работу в Польше, где не обманут с зарплатой и условиями. Я могу показать тебе реальные вакансии, честные отзывы тех, кто там работает, и даже видеообзоры жилья.\n\nДавай начнем! Как тебя зовут? (Напиши просто имя, например: Андрей) 👇";
+  const welcomeMessage = "👋 Привет! Я Мия, ИИ-помощник Gateway Asia.\nПомогаю с честными вакансиями в Азии (Вьетнам, Таиланд, Китай) — преподавание английского, хостес, модели/промо, отели и индустрия гостеприимства. Без обмана и без оплаты вакансий.\nКак тебя зовут? 👇\n\n👋 Hi! I'm Mia, the Gateway Asia AI assistant.\nI help with legit jobs across Asia (Vietnam, Thailand, China) — English teaching, hostess, model/promo, hotel & hospitality roles. No scams, no fees for jobs.\nWhat's your name? 👇";
   
   // Сохраняем приветствие бота в историю
   db.prepare("INSERT INTO chat_history (chat_id, role, message) VALUES (?, ?, ?)")
@@ -350,7 +350,7 @@ bot.on('message', async (msg) => {
         }
 
         // Отправляем кандидату финальное сообщение
-        const finalConfirmation = "Спасибо большое за ответы! Ваши данные успешно сохранены и переданы нашему менеджеру. Он свяжется с вами по телефону в ближайшее время для подтверждения вакансии и бронирования жилья. ⏳";
+        const finalConfirmation = "Спасибо за ответы! 🙌 Ваши данные сохранены и переданы нашему менеджеру — он свяжется с вами в ближайшее время для подтверждения вакансии и деталей по визе/переезду. ⏳\n\nThank you! 🙌 Your details are saved and passed to our manager — they'll contact you soon to confirm the role and visa/relocation details. ⏳";
         await bot.sendMessage(chatId, finalConfirmation);
         
         db.prepare("INSERT INTO chat_history (chat_id, role, message) VALUES (?, ?, ?)")
