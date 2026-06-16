@@ -45,6 +45,60 @@ console.log("Telegram Bot started in polling mode...");
 
 const DEFAULT_COMMISSION_PLN = Number(process.env.DEFAULT_COMMISSION_PLN || 900);
 
+// --- "Человеческая" отправка: дробим ответ на короткие пузыри, перед каждым
+// показываем "печатает…" и ждём задержку, пропорциональную длине (как будто
+// человек печатает на телефоне). Кандидат не должен заподозрить бота/ИИ.
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const jitter = (ms) => Math.round(ms * (0.82 + Math.random() * 0.36)); // ±18%
+
+// Тире "—" — главный признак ИИ-текста. Чистим на всякий случай, даже если
+// модель проскочила правило. Заодно убираем двойные пробелы.
+function deAiText(s) {
+  return String(s || '')
+    .replace(/\s*[—–]\s*/g, ', ')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+function splitBubbles(text) {
+  // ИИ разделяет реплики переносом строки → каждая строка = отдельное сообщение.
+  const parts = deAiText(text)
+    .split(/\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  // Склеиваем слишком короткие обрывки (<15 симв.) со следующим — чтобы не
+  // спамить рублеными сообщениями.
+  const merged = [];
+  for (const p of parts) {
+    if (merged.length && merged[merged.length - 1].length < 15) merged[merged.length - 1] += ' ' + p;
+    else merged.push(p);
+  }
+  return merged.slice(0, 4); // не больше 4 пузырей за ход
+}
+
+// ~15 символов/сек ≈ скорость быстрого набора на телефоне (по исследованию набора
+// 37k людей). Границы 0.8–5 с (typing-индикатор Telegram живёт ~5 с, поэтому
+// дольше не ждём — одного sendChatAction на пузырь достаточно).
+function typingDelayFor(text, isFirst) {
+  let ms = Math.min(5000, Math.max(800, String(text).length * 65));
+  if (isFirst) ms = Math.min(5000, ms + 450); // чуть «подумать/прочитать» перед первым
+  return jitter(ms);
+}
+
+async function sendHuman(chatId, text) {
+  const bubbles = splitBubbles(text);
+  if (!bubbles.length) return;
+  for (let i = 0; i < bubbles.length; i++) {
+    try { await bot.sendChatAction(chatId, 'typing'); } catch (_) { /* ignore */ }
+    await sleep(typingDelayFor(bubbles[i], i === 0));
+    try {
+      await bot.sendMessage(chatId, bubbles[i]);
+    } catch (err) {
+      console.error('[sendHuman] send failed:', err && err.message);
+    }
+  }
+}
+
 // --- Liveness: приём лидов — единственный вход воронки, его падение = 0 выручки.
 // Важно: ТИШИНА (никто не пишет) — это НЕ поломка. Поломка — это УСТОЙЧИВЫЕ
 // ошибки polling. Разовый 409 при деплое (старый+новый инстанс на миг) не в счёт.
@@ -133,13 +187,13 @@ bot.onText(/\/start(.*)/, async (msg, match) => {
   // Очищаем историю чата перед началом нового диалога
   db.prepare("DELETE FROM chat_history WHERE chat_id = ?").run(chatId);
 
-  const welcomeMessage = "👋 Привет! Я Мия, ИИ-помощник Gateway Asia.\nПомогаю с честными вакансиями в Азии (Вьетнам, Таиланд, Китай) — преподавание английского, хостес, модели/промо, отели и индустрия гостеприимства. Без обмана и без оплаты вакансий.\n\nКак тебя зовут? 👇\n\n🇬🇧 You can write in English too.";
+  const welcomeMessage = "привет 🙂 я Мия из Gateway Asia\nпомогаю иностранцам найти норм работу в азии — преподавать английский, хостес, модели, отели\nбез обмана, за вакансии денег не берём\nкак тебя зовут? (можно и по-английски)";
   
   // Сохраняем приветствие бота в историю
   db.prepare("INSERT INTO chat_history (chat_id, role, message) VALUES (?, ?, ?)")
     .run(chatId, 'model', welcomeMessage);
 
-bot.sendMessage(chatId, welcomeMessage);
+sendHuman(chatId, welcomeMessage);
 });
 
 bot.onText(/\/report/, async (msg) => {
@@ -287,8 +341,8 @@ bot.on('message', async (msg) => {
     // 2. Обрабатываем сообщение через ИИ-агента (Gemini)
     const result = await processCandidateMessage(chatHistory, text, vacanciesText);
 
-    // 3. Отправляем ответ кандидату
-    await bot.sendMessage(chatId, result.reply);
+    // 3. Отправляем ответ кандидату — по-человечески (пузыри + задержки)
+    await sendHuman(chatId, result.reply);
 
     // 4. Записываем диалог в историю SQLite
     db.prepare("INSERT INTO chat_history (chat_id, role, message) VALUES (?, ?, ?)")
@@ -350,8 +404,8 @@ bot.on('message', async (msg) => {
         }
 
         // Отправляем кандидату финальное сообщение
-        const finalConfirmation = "Спасибо за ответы! 🙌 Ваши данные сохранены и переданы нашему менеджеру — он свяжется с вами в ближайшее время для подтверждения вакансии и деталей по визе/переезду. ⏳\n\nThank you! 🙌 Your details are saved and passed to our manager — they'll contact you soon to confirm the role and visa/relocation details. ⏳";
-        await bot.sendMessage(chatId, finalConfirmation);
+        const finalConfirmation = "супер, спасибо 🙌\nпередала твою анкету нашему менеджеру — он скоро напишет по деталям (вакансия, виза, переезд)";
+        await sendHuman(chatId, finalConfirmation);
         
         db.prepare("INSERT INTO chat_history (chat_id, role, message) VALUES (?, ?, ?)")
           .run(chatId, 'model', finalConfirmation);
@@ -363,7 +417,7 @@ bot.on('message', async (msg) => {
     }
   } catch (error) {
     console.error("Error processing message:", error);
-    bot.sendMessage(chatId, "Прошу прощения, возникла небольшая техническая ошибка при обработке сообщения. Попробуйте написать мне через минуту.");
+    bot.sendMessage(chatId, "ой, что-то подвисло 🙈 напиши ещё раз через минутку");
   }
 });
 
