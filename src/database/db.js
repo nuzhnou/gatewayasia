@@ -10,18 +10,65 @@ const remoteUrl = process.env.TURSO_DATABASE_URL || '';
 const authToken = process.env.TURSO_AUTH_TOKEN || '';
 const remoteMode = Boolean(remoteUrl);
 
-let db;
-if (remoteMode) {
-  db = new Database(remoteUrl, { authToken });
-  console.log('[DB] Connected to Turso (remote mode).');
-} else {
+function createClient() {
+  if (remoteMode) {
+    return new Database(remoteUrl, { authToken });
+  }
   const dbPath = process.env.LOCAL_DB_PATH || path.join(__dirname, '../../database.db');
-  db = new Database(dbPath);
+  const local = new Database(dbPath);
   try {
-    db.pragma('journal_mode = WAL');
+    local.pragma('journal_mode = WAL');
   } catch (error) {
     // WAL is a no-op/unsupported in some modes; safe to ignore.
   }
+  return local;
+}
+
+let client = createClient();
+console.log(remoteMode ? '[DB] Connected to Turso (remote mode).' : '[DB] Local database file.');
+
+// Удалённый стрим Turso (Hrana) протухает при простое — запрос падает с
+// "stream not found". Эти ошибки восстановимы: пересоздаём соединение и повторяем
+// запрос один раз. Так бот переживает простои Render и сетевые блипы.
+const RECOVERABLE = /stream not found|stream is closed|stream expired|baton|hrana|ECONNRESET|ETIMEDOUT|socket hang up|fetch failed|connection (reset|closed)|50[234]/i;
+
+function reconnect(reason) {
+  try { if (client && client.close) client.close(); } catch (_) { /* ignore */ }
+  client = createClient();
+  console.warn('[DB] reconnected to Turso (' + String(reason || '').slice(0, 80) + ')');
+}
+
+// db.prepare(sql) → стейтмент с run/get/all, которые при восстановимой ошибке
+// один раз переподключаются и повторяют запрос. Все вызовы db.prepare в коде
+// работают как прежде — менять их не нужно.
+const db = {
+  prepare(sql) {
+    let stmt = client.prepare(sql);
+    let conn = client;
+    const exec = (method) => (...args) => {
+      if (conn !== client) { stmt = client.prepare(sql); conn = client; }
+      try {
+        return stmt[method](...args);
+      } catch (e) {
+        if (remoteMode && RECOVERABLE.test((e && e.message) || '')) {
+          reconnect(e && e.message);
+          stmt = client.prepare(sql);
+          conn = client;
+          return stmt[method](...args); // повтор один раз на свежем соединении
+        }
+        throw e;
+      }
+    };
+    return { run: exec('run'), get: exec('get'), all: exec('all') };
+  },
+  pragma: (...args) => client.pragma(...args)
+};
+
+// Держим Hrana-стрим тёплым: лёгкий пинг раз в 90с не даёт ему протухнуть при
+// простое (это и была причина падений cold sweep раз в 20 мин).
+if (remoteMode) {
+  const ka = setInterval(() => { try { db.prepare('SELECT 1').get(); } catch (_) { /* recover внутри */ } }, 90 * 1000);
+  if (ka.unref) ka.unref();
 }
 
 // Kept for API compatibility (callers: bot.js, scrapers). In remote mode every

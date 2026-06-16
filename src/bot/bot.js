@@ -40,7 +40,9 @@ if (!token) {
 initDatabase();
 
 // Инициализация бота
-const bot = new TelegramBot(token, { polling: true });
+// Длинный long-poll (timeout 50с) = меньше запросов к Telegram → реже ловим 502/504.
+// interval 1с между опросами; библиотека сама переподключается при сетевых сбоях.
+const bot = new TelegramBot(token, { polling: { interval: 1000, autoStart: true, params: { timeout: 50 } } });
 console.log("Telegram Bot started in polling mode...");
 
 const DEFAULT_COMMISSION_PLN = Number(process.env.DEFAULT_COMMISSION_PLN || 900);
@@ -122,20 +124,38 @@ function getBotStatus() {
     lastPollingError: liveness.lastPollingError
   };
 }
+// Временные сбои Telegram/сети (502/503/504/таймауты/сброс соединения) — это НЕ
+// поломка: библиотека сама переподключается. Логируем с глушением спама и не
+// паникуем по ним.
+const TRANSIENT_POLL = /50[234]|bad gateway|gateway timeout|ECONNRESET|ETIMEDOUT|EFATAL|socket hang up|ESOCKETTIMEDOUT|network|terminated/i;
+let lastPollLogAt = 0;
+let lastPollLogMsg = '';
 bot.on('polling_error', (err) => {
+  const msg = (err && err.message) || String(err);
   liveness.recentErrors.push(Date.now());
-  if (liveness.recentErrors.length > 50) liveness.recentErrors.shift();
-  liveness.lastPollingError = { message: (err && err.message) || String(err), at: Date.now() };
-  console.error('[POLLING ERROR]', (err && err.code) || '', (err && err.message) || err);
+  if (liveness.recentErrors.length > 200) liveness.recentErrors.shift();
+  liveness.lastPollingError = { message: msg, at: Date.now() };
+  const now = Date.now();
+  if (msg !== lastPollLogMsg || now - lastPollLogAt > 30000) {
+    lastPollLogAt = now;
+    lastPollLogMsg = msg;
+    console.error('[POLLING ERROR]', (err && err.code) || '', msg);
+  }
 });
-// Watchdog: алертим только при УСТОЙЧИВЫХ сбоях (≥3 ошибки за 10 мин), с дебаунсом.
+// Watchdog: алертим ТОЛЬКО при действительно затяжном сбое — много ошибок за
+// длинное окно (а не одну моргалку Telegram). Иначе это ложные тревоги.
 setInterval(() => {
-  const sustained = errorsInWindow(10 * 60 * 1000) >= 3;
-  const debounced = Date.now() - liveness.lastAdminAlertAt > 30 * 60 * 1000;
+  const cnt = errorsInWindow(15 * 60 * 1000);
+  const sustained = cnt >= 25;
+  const debounced = Date.now() - liveness.lastAdminAlertAt > 60 * 60 * 1000;
   if (sustained && debounced && adminAlertChatId) {
     liveness.lastAdminAlertAt = Date.now();
     const e = liveness.lastPollingError || {};
-    bot.sendMessage(adminAlertChatId, `⚠️ Бот: устойчивые ошибки polling (${errorsInWindow(600000)} за 10 мин). Последняя: ${e.message}. Похоже на реальный сбой — проверь Render.`).catch(() => {});
+    const transient = TRANSIENT_POLL.test(e.message || '');
+    const tail = transient
+      ? 'Обычно это временные сбои Telegram/сети — бот сам переподключается. Если не утихает >30 мин, проверь Render.'
+      : 'Похоже на реальный сбой — проверь Render.';
+    bot.sendMessage(adminAlertChatId, `⚠️ Бот: много ошибок связи (${cnt} за 15 мин). Последняя: ${e.message}. ${tail}`).catch(() => {});
   }
 }, 5 * 60 * 1000);
 
